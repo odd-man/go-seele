@@ -249,6 +249,9 @@ func (p *SeeleProtocol) handleNewMinedBlock(e event.Event) {
 	p.log.Debug("new block: %d %s <- %s ", block.Header.Height, block.HeaderHash.ToHex(), block.Header.PreviousBlockHash.ToHex())
 
 	p.broadcastChainHead()
+	// blockHeight metrics
+	blockHeight.Update(int64(block.Header.Height))
+	p.log.Debug("test blockHeight metrics %v", blockHeight.Value())
 }
 
 func (p *SeeleProtocol) handleAddPeer(p2pPeer *p2p.Peer, rw p2p.MsgReadWriter) {

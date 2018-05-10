@@ -277,6 +277,8 @@ func (bc *Blockchain) WriteBlock(block *types.Block) error {
 	}
 
 	committed = true
+	// insert block
+	chainBlockInsert.Mark(1)
 
 	return nil
 }

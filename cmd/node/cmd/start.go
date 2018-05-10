@@ -10,18 +10,23 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
+
+	"github.com/spf13/cobra"
 
 	"github.com/seeleteam/go-seele/common"
 	"github.com/seeleteam/go-seele/log"
+	"github.com/seeleteam/go-seele/metrics"
+	"github.com/seeleteam/go-seele/metrics/influxdb"
 	"github.com/seeleteam/go-seele/monitor"
 	"github.com/seeleteam/go-seele/node"
 	"github.com/seeleteam/go-seele/seele"
-	"github.com/spf13/cobra"
 )
 
 var seeleNodeConfigFile *string
 var miner *string
 var genesisConfigFile *string
+var metricsEnableFlag *bool
 
 // startCmd represents the start command
 var startCmd = &cobra.Command{
@@ -84,6 +89,18 @@ var startCmd = &cobra.Command{
 			}
 		}
 
+		// metrics control
+		if *metricsEnableFlag {
+			// update the global enableMetrics = true
+			metrics.Enabled = true
+			go startInfluxDB(*nCfg)
+			fmt.Println("start metrics")
+		} else {
+			// update the global enableMetrics = false
+			metrics.Enabled = false
+			influxdb.Stop()
+		}
+
 		wg.Add(1)
 		wg.Wait()
 	},
@@ -99,4 +116,26 @@ func init() {
 
 	genesisConfigFile = startCmd.Flags().StringP("genesis", "g", "", "seele genesis config file")
 	startCmd.MarkFlagRequired("genesis")
+	metricsEnableFlag = startCmd.Flags().BoolP("metrics", "s", false, "seele node metrics start or stop")
+}
+
+// FIXME: startInfluxDB
+func startInfluxDB(nodeConfig node.Config) {
+	influxdb.InfluxDBWithTags(
+		metrics.DefaultRegistry, // metrics registry
+		time.Second*10,          // interval
+		"http://localhost:8086", // the InfluxDB url
+		"influxdb",              // your InfluxDB database
+		"test",                  // your InfluxDB user
+		"test123",               // your InfluxDB password
+		"",                      // your namespace
+		map[string]string{
+			"coinBase":  nodeConfig.SeeleConfig.Coinbase.ToHex(),
+			"networkId": fmt.Sprint(nodeConfig.SeeleConfig.NetworkID),
+			"name":      nodeConfig.Name,
+			"version":   nodeConfig.Version,
+			"addr":      nodeConfig.HTTPAddr,
+		},
+	)
+	fmt.Println("metrics startInfluxDB")
 }
